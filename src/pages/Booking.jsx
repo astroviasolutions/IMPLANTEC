@@ -45,11 +45,12 @@ export default function Booking() {
       <header className="bg-ink text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(900px 300px at 80% -20%, #0e7490, transparent), radial-gradient(500px 240px at 0% 120%, #c9a45c55, transparent)' }} />
         <div className="relative max-w-2xl mx-auto px-5 pt-8 pb-10">
-          <div className="flex items-center justify-between"><div><div className="font-serif text-4xl leading-none">Implantec</div><div className="text-[11px] tracking-[.25em] text-gold mt-1.5">ODONTOLOGIA</div></div><Link to="/login" className="text-xs text-white/60 hover:text-white">Área da clínica</Link></div>
+          <div className="flex items-center justify-between"><div><div className="font-serif text-4xl leading-none">Implantec</div><div className="text-[11px] tracking-[.25em] text-gold mt-1.5">ODONTOLOGIA</div></div><Link to="/login" className="text-sm font-semibold border border-white/30 rounded-lg px-3 py-1.5 text-white/90 hover:bg-white/10">Área da clínica</Link></div>
           <p className="font-serif text-2xl mt-8 max-w-sm leading-snug">Agende sua consulta em menos de um minuto.</p>
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-4 -mt-6 pb-16 relative">
+        {DEMO && <div className="card p-4 mb-3 border-gold bg-amber-50 flex flex-wrap items-center gap-3 justify-between"><span className="text-sm"><b>Demonstração.</b> Você está vendo o site do paciente. O painel de gestão tem dados fictícios.</span><Link to="/login" className="btn btn-primary">Entrar na área de gestão →</Link></div>}
         {notices.filter((n) => n.ativo).map((n) => <div key={n.id} className="card p-4 mb-3 border-gold/60"><b>{n.titulo}</b><p className="text-sm text-slate-600">{n.texto}</p></div>)}
         <div className="card p-5 rise">
           {done ? (
