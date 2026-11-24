@@ -8,8 +8,9 @@ export const DEMO = !(url && key)
 export const supabase = DEMO ? null : createClient(url, key)
 
 const LS = 'implantec_demo_v1'
-const load = () => { try { const j = JSON.parse(localStorage.getItem(LS)); if (j) return j } catch {} const s = seed(); localStorage.setItem(LS, JSON.stringify(s)); return s }
-const persist = (s) => { try { localStorage.setItem(LS, JSON.stringify(s)) } catch {} }
+let mem = null // fallback quando o navegador bloqueia localStorage
+const load = () => { if (mem) return mem; try { const j = JSON.parse(localStorage.getItem(LS)); if (j) return j } catch {} mem = seed(); try { localStorage.setItem(LS, JSON.stringify(mem)) } catch {} return mem }
+const persist = (s) => { mem = s; try { localStorage.setItem(LS, JSON.stringify(s)) } catch {} }
 const listeners = new Set()
 const emit = () => listeners.forEach((f) => f())
 
@@ -29,7 +30,7 @@ export const db = {
     else { const { error } = await supabase.from(t).delete().eq('id', id); if (error) throw error }
     emit()
   },
-  reset() { localStorage.removeItem(LS); emit() },
+  reset() { mem = null; try { localStorage.removeItem(LS) } catch {} emit() },
 }
 
 export function useTable(t) {
@@ -45,15 +46,15 @@ export const useAuth = () => useContext(AuthCtx)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(undefined)
   useEffect(() => {
-    if (DEMO) { setUser(sessionStorage.getItem('demo_user') ? { email: 'demo@implantec' } : null); return }
+    if (DEMO) { setUser(null); return }
     supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null))
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setUser(s?.user ?? null))
     return () => sub.subscription.unsubscribe()
   }, [])
   const login = async (email, senha) => {
-    if (DEMO) { sessionStorage.setItem('demo_user', '1'); setUser({ email: email || 'demo@implantec' }); return }
+    if (DEMO) { setUser({ email: email || 'demo@implantec' }); return }
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha }); if (error) throw error
   }
-  const logout = async () => { DEMO ? (sessionStorage.removeItem('demo_user'), setUser(null)) : await supabase.auth.signOut() }
+  const logout = async () => { DEMO ? setUser(null) : await supabase.auth.signOut() }
   return <AuthCtx.Provider value={{ user, login, logout }}>{children}</AuthCtx.Provider>
 }

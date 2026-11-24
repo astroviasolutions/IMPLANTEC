@@ -1,3 +1,4 @@
+import { ask, notify } from '../lib/dialog'
 import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useTable } from '../lib/db'
@@ -16,7 +17,7 @@ export default function Orcamentos() {
     {rows.length === 0 ? <div className="card"><Empty>Nenhum orçamento.</Empty></div> : <div className="card divide-y divide-line">{[...rows].sort((a, c) => (c.criado_em || '').localeCompare(a.criado_em || '')).map((x) => (
       <button key={x.id} onClick={() => setB(x)} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"><span className="flex-1"><b>{pt.find((p) => p.id === x.patient_id)?.nome || '—'}</b><span className="block text-xs text-slate-500">{x.itens.length} item(ns) · {x.parcelas}x</span></span><b>{brl(totalOrc(x))}</b><span className={`chip ${ST[x.status][1]}`}>{ST[x.status][0]}</span></button>))}</div>}
     {b && <Modal wide title={b.id ? 'Orçamento' : 'Novo orçamento'} onClose={() => setB(null)}>
-      <form onSubmit={async (e) => { e.preventDefault(); if (!b.itens.length) return alert('Adicione ao menos um procedimento.'); await save({ ...b, criado_em: b.criado_em || new Date().toISOString() }); setB(null) }}>
+      <form onSubmit={async (e) => { e.preventDefault(); if (!b.itens.length) return notify('Adicione ao menos um procedimento.'); await save({ ...b, criado_em: b.criado_em || new Date().toISOString() }); setB(null) }}>
         <div className="grid sm:grid-cols-2 gap-x-3"><Field label="Paciente"><select className="input" value={b.patient_id} onChange={(e) => setB({ ...b, patient_id: e.target.value })}>{pt.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></Field>
           <Field label="Profissional"><select className="input" value={b.dentist_id} onChange={(e) => setB({ ...b, dentist_id: e.target.value })}>{dn.map((d) => <option key={d.id} value={d.id}>{d.nome}</option>)}</select></Field></div>
         <Field label="Adicionar procedimento"><select className="input" value="" onChange={(e) => add(e.target.value)}><option value="">Selecione…</option>{sv.map((s) => <option key={s.id} value={s.id}>{s.nome} — {brl(s.preco)}</option>)}</select></Field>
@@ -28,7 +29,7 @@ export default function Orcamentos() {
           <Field label="Status"><select className="input" value={b.status} onChange={(e) => setB({ ...b, status: e.target.value })}>{Object.entries(ST).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select></Field></div>
         <div className="flex items-center justify-between bg-ink text-white rounded-xl px-4 py-3 mb-3"><span>Total</span><b className="text-xl">{brl(totalOrc(b))}</b></div>
         {b.parcelas > 1 && <p className="text-sm text-slate-500 mb-3">{b.parcelas}x de {brl(totalOrc(b) / b.parcelas)} (sem juros)</p>}
-        <div className="flex justify-between">{b.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (confirm('Excluir orçamento?')) { await remove(b.id); setB(null) } }}>Excluir</button> : <span />}<button className="btn btn-primary">Salvar</button></div>
+        <div className="flex justify-between">{b.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (await ask('Excluir orçamento?')) { await remove(b.id); setB(null) } }}>Excluir</button> : <span />}<button className="btn btn-primary">Salvar</button></div>
       </form></Modal>}
   </>)
 }

@@ -1,3 +1,4 @@
+import { ask, notify } from '../lib/dialog'
 import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Plus, MessageCircle } from 'lucide-react'
 import { useTable } from '../lib/db'
@@ -17,7 +18,7 @@ export default function Agenda() {
     e.preventDefault()
     const s = sv.find((x) => x.id === edit.service_id), ini = mkDate(edit.dia, edit.hora), fim = new Date(ini.getTime() + (s?.duracao_min || 30) * 60000)
     const choque = ap.find((a) => a.id !== edit.id && a.dentist_id === edit.dentist_id && !['cancelado', 'faltou'].includes(a.status) && ini < new Date(a.fim) && fim > new Date(a.inicio))
-    if (choque && !confirm('Esse profissional já tem consulta nesse horário. Agendar mesmo assim?')) return
+    if (choque && !await ask('Esse profissional já tem consulta nesse horário. Agendar mesmo assim?')) return
     let patient_id = edit.patient_id || null
     if (!patient_id && edit.nome_externo && edit.converter) { const p = await savePt({ nome: edit.nome_externo, whatsapp: edit.whatsapp_externo, anamnese: {}, odontograma: {} }); patient_id = p.id }
     const { dia: _d, hora: _h, converter: _c, ...row } = edit
@@ -58,7 +59,7 @@ export default function Agenda() {
         <Field label="Status"><select className="input" value={edit.status} onChange={set('status')}>{Object.entries(STATUS).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select></Field>
         <Field label="Observações"><textarea className="input" rows={2} value={edit.observacoes || ''} onChange={set('observacoes')} /></Field>
         <div className="flex gap-2 justify-between mt-2">
-          {edit.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (confirm('Excluir esta consulta?')) { await remove(edit.id); setEdit(null) } }}>Excluir</button> : <span />}
+          {edit.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (await ask('Excluir esta consulta?')) { await remove(edit.id); setEdit(null) } }}>Excluir</button> : <span />}
           <button className="btn btn-primary">Salvar</button>
         </div>
       </form></Modal>}

@@ -1,3 +1,4 @@
+import { ask, notify } from '../lib/dialog'
 import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { useTable } from '../lib/db'
@@ -13,7 +14,7 @@ export default function Caixa() {
     <PageHead title="Caixa" sub="Recebimentos do dia"><button className="btn btn-primary" onClick={() => setN({ valor: '', forma: 'pix', patient_id: '', dentist_id: dn[0]?.id, obs: '' })}><Plus size={16} />Novo recebimento</button></PageHead>
     <input type="date" className="input !w-auto mb-4" value={dia} onChange={(e) => setDia(e.target.value)} />
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5"><Stat label="Total do dia" value={brl(total)} accent="text-emerald-700" />{porForma.map(([k, v]) => <Stat key={k} label={FORMAS[k]} value={brl(v)} />)}</div>
-    {doDia.length === 0 ? <div className="card"><Empty>Nenhum recebimento neste dia.</Empty></div> : <div className="card divide-y divide-line">{doDia.map((p) => <div key={p.id} className="px-4 py-3 flex items-center gap-3"><span className="text-sm text-slate-500 w-12">{hm(new Date(p.data))}</span><span className="flex-1 min-w-0"><b className="block truncate">{pt.find((x) => x.id === p.patient_id)?.nome || 'Sem paciente'}</b><span className="text-xs text-slate-500">{FORMAS[p.forma]} · {dn.find((d) => d.id === p.dentist_id)?.nome}{p.obs ? ' · ' + p.obs : ''}</span></span><b>{brl(p.valor)}</b><button className="text-xs text-rose-700" onClick={() => confirm('Remover este lançamento?') && remove(p.id)}>remover</button></div>)}</div>}
+    {doDia.length === 0 ? <div className="card"><Empty>Nenhum recebimento neste dia.</Empty></div> : <div className="card divide-y divide-line">{doDia.map((p) => <div key={p.id} className="px-4 py-3 flex items-center gap-3"><span className="text-sm text-slate-500 w-12">{hm(new Date(p.data))}</span><span className="flex-1 min-w-0"><b className="block truncate">{pt.find((x) => x.id === p.patient_id)?.nome || 'Sem paciente'}</b><span className="text-xs text-slate-500">{FORMAS[p.forma]} · {dn.find((d) => d.id === p.dentist_id)?.nome}{p.obs ? ' · ' + p.obs : ''}</span></span><b>{brl(p.valor)}</b><button className="text-xs text-rose-700" onClick={async () => await ask('Remover este lançamento?') && remove(p.id)}>remover</button></div>)}</div>}
     {n && <Modal title="Novo recebimento" onClose={() => setN(null)}>
       <form onSubmit={async (e) => { e.preventDefault(); await save({ ...n, valor: Number(n.valor), patient_id: n.patient_id || null, data: new Date().toISOString() }); setN(null) }}>
         <Field label="Paciente"><select className="input" value={n.patient_id} onChange={(e) => setN({ ...n, patient_id: e.target.value })}><option value="">—</option>{pt.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></Field>

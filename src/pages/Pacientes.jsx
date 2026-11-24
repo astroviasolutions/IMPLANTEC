@@ -1,3 +1,4 @@
+import { ask, notify } from '../lib/dialog'
 import { useEffect, useRef, useState } from 'react'
 import { Plus, Search, PenLine } from 'lucide-react'
 import { useTable, db, DEMO, supabase } from '../lib/db'
@@ -42,7 +43,7 @@ function Assinatura({ patient, tipo, onSaved }) {
       const png = ref.current.toDataURL('image/png'); let path = png
       if (!DEMO) { const blob = await (await fetch(png)).blob(); path = `${patient.id}/${Date.now()}.png`; const { error } = await supabase.storage.from('termos').upload(path, blob, { contentType: 'image/png' }); if (error) throw error }
       await db.upsert('signed_terms', { patient_id: patient.id, tipo, arquivo_path: path, criado_em: new Date().toISOString() }); onSaved()
-    } catch { alert('Falha ao salvar a assinatura. Tente de novo.') } finally { setBusy(false) }
+    } catch { notify('Falha ao salvar a assinatura. Tente de novo.') } finally { setBusy(false) }
   }
   return (<div>
     <canvas ref={ref} className="w-full h-40 border-2 border-dashed border-line rounded-xl bg-slate-50 touch-none" onPointerDown={down} onPointerMove={move} onPointerUp={() => setDraw(false)} aria-label="Quadro de assinatura" />
@@ -62,7 +63,7 @@ export default function Pacientes() {
   const novo = () => { setP({ nome: '', whatsapp: '', cpf: '', nascimento: '', email: '', anamnese: {}, odontograma: {}, observacoes: '' }); setTab('dados') }
   const set = (k) => (e) => setP({ ...p, [k]: e.target.value })
   const an = (k) => (e) => setP({ ...p, anamnese: { ...p.anamnese, [k]: e.target.value } })
-  const gravar = async (e) => { e?.preventDefault(); if (p.whatsapp && digits(p.whatsapp).length < 10) return alert('WhatsApp precisa de DDD (10+ dígitos).'); const r = await save({ ...p, nascimento: p.nascimento || null }); setP(r) }
+  const gravar = async (e) => { e?.preventDefault(); if (p.whatsapp && digits(p.whatsapp).length < 10) return notify('WhatsApp precisa de DDD (10+ dígitos).'); const r = await save({ ...p, nascimento: p.nascimento || null }); setP(r) }
   const meus = terms.filter((t) => t.patient_id === p?.id)
   return (<>
     <PageHead title="Pacientes" sub={`${rows.length} cadastrados`}><button className="btn btn-primary" onClick={novo}><Plus size={16} />Novo paciente</button></PageHead>
@@ -81,7 +82,7 @@ export default function Pacientes() {
           <Field label="Queixa principal"><input className="input" value={p.anamnese?.queixa || ''} onChange={an('queixa')} /></Field></div>
         <Field label="Observações"><textarea rows={3} className="input" value={p.observacoes || ''} onChange={set('observacoes')} /></Field>
         <div className="flex justify-between gap-2">
-          {p.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (confirm(`Excluir ${p.nome} e todo o histórico? Não dá para desfazer.`)) { await remove(p.id); setP(null) } }}>Excluir</button> : <span />}
+          {p.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (await ask(`Excluir ${p.nome} e todo o histórico? Não dá para desfazer.`)) { await remove(p.id); setP(null) } }}>Excluir</button> : <span />}
           <div className="flex gap-2">{p.whatsapp && <a className="btn btn-ghost" target="_blank" rel="noreferrer" href={waLink(p.whatsapp, `Olá, ${p.nome.split(' ')[0]}!`)}>WhatsApp</a>}<button className="btn btn-primary">Salvar</button></div></div></form>}
       {tab === 'anamnese' && <form onSubmit={gravar}>
         <div className="grid sm:grid-cols-2 gap-x-4">{PERGUNTAS.map(([k, l]) => <Field key={k} label={l}><select className="input" value={p.anamnese?.[k] || ''} onChange={an(k)}>{SN.map((o) => <option key={o} value={o}>{o || '—'}</option>)}</select></Field>)}</div>
@@ -93,7 +94,7 @@ export default function Pacientes() {
         <Field label="Tipo de termo"><select className="input" value={termo} onChange={(e) => setTermo(e.target.value)}>{Object.keys(TERMOS).map((k) => <option key={k}>{k}</option>)}</select></Field>
         <div className="bg-slate-50 rounded-xl p-3 text-sm mb-3"><b>{p.nome}</b>, {TERMOS[termo]}</div>
         <p className="text-xs text-slate-500 mb-2 flex items-center gap-1"><PenLine size={13} />Assine no quadro abaixo</p>
-        <Assinatura patient={p} tipo={termo} onSaved={() => alert('Termo salvo.')} />
+        <Assinatura patient={p} tipo={termo} onSaved={() => notify('Termo salvo.')} />
         {meus.length > 0 && <div className="mt-5"><div className="label">Termos assinados</div><ul className="text-sm divide-y divide-line">{meus.map((t) => <li key={t.id} className="py-2 flex justify-between"><span>{t.tipo}</span><span className="text-slate-500">{new Date(t.criado_em).toLocaleDateString('pt-BR')}</span></li>)}</ul></div>}
       </div>}
     </Modal>}
