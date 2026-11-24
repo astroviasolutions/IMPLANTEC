@@ -4,7 +4,7 @@ const d = 'dist-artifact', html = fs.readFileSync(`${d}/index.html`, 'utf8')
 const js = fs.readFileSync(`${d}/${/src="\/(assets\/[^"]+\.js)"/.exec(html)[1]}`, 'utf8').replace(/<\/script/gi, '<\\/script')
 const css = fs.readFileSync(`${d}/${/href="\/(assets\/[^"]+\.css)"/.exec(html)[1]}`, 'utf8')
 const out = `<title>Implantec Odontologia</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&family=Montserrat:wght@400;500;600;800&display=swap">
 <style>${css}</style>
 <div id="root"></div>
 <script type="module">${js}</script>

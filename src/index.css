@@ -2,13 +2,13 @@
 @theme {
   --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
   --font-serif: "Instrument Serif", Georgia, serif;
-  --color-ink: #0b2a3a;
-  --color-ink-2: #12394d;
-  --color-brand: #0e7490;
-  --color-brand-2: #0a5b73;
-  --color-gold: #c9a45c;
-  --color-bg: #f4f7f8;
-  --color-line: #dbe4e8;
+  --color-ink: #08304f;
+  --color-ink-2: #0e4a7b;
+  --color-brand: #0e4a7b;
+  --color-brand-2: #0a3a62;
+  --color-gold: #c4a468;
+  --color-bg: #f5f4f0;
+  --color-line: #e0e0d8;
 }
 html, body { background: var(--color-bg); color: #10222c; -webkit-tap-highlight-color: transparent; }
 body { font-family: var(--font-sans); }

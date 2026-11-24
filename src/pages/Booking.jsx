@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, ChevronLeft, MessageCircle } from 'lucide-react'
+import Logo from '../components/Logo'
 import { DEMO, db, supabase, useTable } from '../lib/db'
 import { brl, digits, hm, mkDate, pad, ymd, waLink } from '../lib/util'
 
@@ -43,9 +44,9 @@ export default function Booking() {
   return (
     <div className="min-h-dvh bg-bg">
       <header className="bg-ink text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(900px 300px at 80% -20%, #0e7490, transparent), radial-gradient(500px 240px at 0% 120%, #c9a45c55, transparent)' }} />
+        <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(900px 300px at 80% -20%, #1b6aa5, transparent), radial-gradient(500px 240px at 0% 120%, #c4a46855, transparent)' }} />
         <div className="relative max-w-2xl mx-auto px-5 pt-8 pb-10">
-          <div className="flex items-center justify-between"><div><div className="font-serif text-4xl leading-none">Implantec</div><div className="text-[11px] tracking-[.25em] text-gold mt-1.5">ODONTOLOGIA</div></div><Link to="/login" className="text-sm font-semibold border border-white/30 rounded-lg px-3 py-1.5 text-white/90 hover:bg-white/10">Área da clínica</Link></div>
+          <div className="flex items-center justify-between"><Logo variant="light" size="md" tagline /><Link to="/login" className="text-sm font-semibold border border-white/30 rounded-lg px-3 py-1.5 text-white/90 hover:bg-white/10">Área da clínica</Link></div>
           <p className="font-serif text-2xl mt-8 max-w-sm leading-snug">Agende sua consulta em menos de um minuto.</p>
         </div>
       </header>
