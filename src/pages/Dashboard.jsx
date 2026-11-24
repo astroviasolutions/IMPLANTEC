@@ -1,18 +1,20 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useTable } from '../lib/db'
+import { useClinica } from '../lib/settings'
 import { PageHead, Stat } from '../components/ui'
 import { brl, hm, ymd, STATUS } from '../lib/util'
 export default function Dashboard() {
-  const { rows: ap } = useTable('appointments'), { rows: pay } = useTable('payments'), { rows: pt } = useTable('patients'), { rows: bud } = useTable('budgets'), { rows: sv } = useTable('services'), { rows: dn } = useTable('dentists')
+  const { cfg } = useClinica(), { rows: est } = useTable('stock_items'), { rows: ap } = useTable('appointments'), { rows: pay } = useTable('payments'), { rows: pt } = useTable('patients'), { rows: bud } = useTable('budgets'), { rows: sv } = useTable('services'), { rows: dn } = useTable('dentists')
   const hoje = ymd(new Date()), mes = hoje.slice(0, 7)
   const d = useMemo(() => {
     const doDia = ap.filter((a) => ymd(new Date(a.inicio)) === hoje && a.status !== 'cancelado').sort((a, b) => a.inicio.localeCompare(b.inicio))
     const rec = pay.filter((p) => ymd(new Date(p.data)).startsWith(mes)).reduce((s, p) => s + Number(p.valor), 0)
     const abertos = bud.filter((b) => b.status === 'aberto')
     const pend = abertos.reduce((s, b) => s + b.itens.reduce((x, i) => x + i.qtd * i.valor, 0) - (b.desconto || 0), 0)
-    return { doDia, rec, abertos: abertos.length, pend, novos: ap.filter((a) => a.origem === 'site' && a.status === 'agendado') }
-  }, [ap, pay, bud, hoje, mes])
+    const baixos = est.filter((e) => e.qtd <= e.minimo).length, mm = hoje.slice(5, 7), aniv = pt.filter((p) => p.nascimento?.slice(5, 7) === mm).length
+    return { baixos, aniv, doDia, rec, abertos: abertos.length, pend, novos: ap.filter((a) => a.origem === 'site' && a.status === 'agendado') }
+  }, [ap, pay, bud, est, pt, hoje, mes])
   const nome = (a) => pt.find((p) => p.id === a.patient_id)?.nome || a.nome_externo || '—'
   return (<>
     <PageHead title="Painel" sub={new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} />
@@ -21,6 +23,11 @@ export default function Dashboard() {
       <Stat label="Recebido no mês" value={brl(d.rec)} accent="text-emerald-700" />
       <Stat label="Orçamentos abertos" value={d.abertos} hint={brl(d.pend) + ' em aberto'} />
       <Stat label="Pacientes" value={pt.length} />
+    </div>
+    <div className="flex flex-wrap gap-2 mb-4">
+      {cfg.estoque_alerta && d.baixos > 0 && <Link to="/app/estoque" className="chip !text-sm !px-3 !py-1.5 bg-rose-100 text-rose-800">{d.baixos} item(ns) de estoque no mínimo</Link>}
+      {d.aniv > 0 && <Link to="/app/retornos" className="chip !text-sm !px-3 !py-1.5 bg-amber-100 text-amber-900">{d.aniv} aniversariante(s) no mês</Link>}
+      <Link to="/tv" className="chip !text-sm !px-3 !py-1.5 bg-slate-200 text-slate-800">Abrir TV da recepção ↗</Link>
     </div>
     {d.novos.length > 0 && <div className="card p-4 mb-4 border-gold"><b>{d.novos.length} solicitação(ões) do site aguardando confirmação</b> <Link to="/app/agenda" className="text-brand font-semibold text-sm ml-2">Abrir agenda →</Link></div>}
     <div className="card p-5">

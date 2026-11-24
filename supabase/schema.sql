@@ -14,7 +14,7 @@ create table public.dentists (id uuid primary key default gen_random_uuid(), nom
 create table public.services (id uuid primary key default gen_random_uuid(), nome text not null, categoria text,
   duracao_min int not null default 30, preco numeric(10,2) not null default 0, ativo boolean default true);
 create table public.patients (id uuid primary key default gen_random_uuid(), nome text not null, whatsapp text, cpf text,
-  nascimento date, email text, anamnese jsonb default '{}', odontograma jsonb default '{}', observacoes text,
+  nascimento date, email text, anamnese jsonb default '{}', odontograma jsonb default '{}', observacoes text, evolucoes jsonb default '[]',
   criado_em timestamptz default now());
 create table public.appointments (id uuid primary key default gen_random_uuid(),
   patient_id uuid references patients on delete set null, dentist_id uuid references dentists, service_id uuid references services,
@@ -34,9 +34,13 @@ create table public.notices (id uuid primary key default gen_random_uuid(), titu
 create table public.signed_terms (id uuid primary key default gen_random_uuid(), patient_id uuid references patients on delete cascade,
   tipo text not null, arquivo_path text not null, criado_em timestamptz default now());
 create table public.settings (chave text primary key, valor jsonb not null);
+create table public.stock_items (id uuid primary key default gen_random_uuid(), nome text not null, unidade text default 'un', qtd numeric not null default 0, minimo numeric not null default 0);
+create table public.plans (id uuid primary key default gen_random_uuid(), nome text not null, valor numeric(10,2) not null, descricao text);
+create table public.subscriptions (id uuid primary key default gen_random_uuid(), patient_id uuid references patients on delete cascade, plan_id uuid references plans,
+  inicio date not null default current_date, status text not null default 'ativo' check (status in ('ativo','pausado','cancelado')), pagos text[] default '{}');
 
 do $$ declare t text; begin
- foreach t in array array['profiles','dentists','services','patients','appointments','budgets','payments','expenses','notices','signed_terms','settings'] loop
+ foreach t in array array['profiles','dentists','services','patients','appointments','budgets','payments','expenses','notices','signed_terms','settings','stock_items','plans','subscriptions'] loop
   execute format('alter table public.%I enable row level security', t);
   execute format('create policy "staff_all" on public.%I for all to authenticated using (public.is_staff()) with check (public.is_staff())', t);
  end loop; end $$;
@@ -50,6 +54,8 @@ create policy "profiles_admin" on public.profiles for all to authenticated using
 -- Público (site de agendamento): só catálogo + horários ocupados, nunca dados de paciente.
 create policy "public_services" on public.services for select to anon using (ativo);
 create policy "public_dentists" on public.dentists for select to anon using (ativo);
+-- Regras públicas do agendamento (horários, dias, bloqueios). Não guardar nada sensível em settings 'clinica'.
+create policy "public_settings" on public.settings for select to anon using (chave = 'clinica');
 create policy "public_notices" on public.notices for select to anon using (ativo);
 create or replace function public.horarios_ocupados(p_dentist uuid, p_dia date)
 returns table(inicio timestamptz, fim timestamptz) language sql stable security definer set search_path=public as

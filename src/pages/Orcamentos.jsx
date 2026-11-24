@@ -3,19 +3,20 @@ import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useTable } from '../lib/db'
 import { Modal, Field, PageHead, Empty } from '../components/ui'
-import { brl } from '../lib/util'
+import { brl, waLink } from '../lib/util'
 const ST = { aberto: ['Aberto', 'bg-amber-100 text-amber-800'], aprovado: ['Aprovado', 'bg-emerald-100 text-emerald-800'], recusado: ['Recusado', 'bg-rose-100 text-rose-800'], concluido: ['Concluído', 'bg-sky-100 text-sky-800'] }
 export const totalOrc = (b) => Math.max(0, (b.itens || []).reduce((s, i) => s + i.qtd * i.valor, 0) - Number(b.desconto || 0))
 export default function Orcamentos() {
-  const { rows, save, remove } = useTable('budgets'), { rows: pt } = useTable('patients'), { rows: sv } = useTable('services'), { rows: dn } = useTable('dentists')
+  const { rows: pays } = useTable('payments'), { rows, save, remove } = useTable('budgets'), { rows: pt } = useTable('patients'), { rows: sv } = useTable('services'), { rows: dn } = useTable('dentists')
   const [b, setB] = useState(null)
+  const pago = (id) => pays.filter((p) => p.budget_id === id).reduce((s, p) => s + Number(p.valor), 0)
   const add = (sid) => { const s = sv.find((x) => x.id === sid); if (s) setB({ ...b, itens: [...b.itens, { nome: s.nome, dente: '', qtd: 1, valor: Number(s.preco) }] }) }
   const upd = (i, k, v) => setB({ ...b, itens: b.itens.map((x, j) => (j === i ? { ...x, [k]: v } : x)) })
   return (<>
     <PageHead title="Orçamentos" sub="Planos de tratamento por paciente"><button className="btn btn-primary" onClick={() => setB({ patient_id: pt[0]?.id || '', dentist_id: dn[0]?.id, itens: [], desconto: 0, parcelas: 1, status: 'aberto' })} disabled={!pt.length}><Plus size={16} />Novo orçamento</button></PageHead>
     {!pt.length && <p className="text-sm text-slate-500 mb-3">Cadastre um paciente primeiro.</p>}
     {rows.length === 0 ? <div className="card"><Empty>Nenhum orçamento.</Empty></div> : <div className="card divide-y divide-line">{[...rows].sort((a, c) => (c.criado_em || '').localeCompare(a.criado_em || '')).map((x) => (
-      <button key={x.id} onClick={() => setB(x)} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"><span className="flex-1"><b>{pt.find((p) => p.id === x.patient_id)?.nome || '—'}</b><span className="block text-xs text-slate-500">{x.itens.length} item(ns) · {x.parcelas}x</span></span><b>{brl(totalOrc(x))}</b><span className={`chip ${ST[x.status][1]}`}>{ST[x.status][0]}</span></button>))}</div>}
+      <button key={x.id} onClick={() => setB(x)} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex items-center gap-3"><span className="flex-1"><b>{pt.find((p) => p.id === x.patient_id)?.nome || '—'}</b><span className="block text-xs text-slate-500">{x.itens.length} item(ns) · {x.parcelas}x</span></span><span className="text-right"><b className="block">{brl(totalOrc(x))}</b>{pago(x.id) > 0 && <span className="text-[11px] text-emerald-700">pago {brl(pago(x.id))}</span>}</span><span className={`chip ${ST[x.status][1]}`}>{ST[x.status][0]}</span></button>))}</div>}
     {b && <Modal wide title={b.id ? 'Orçamento' : 'Novo orçamento'} onClose={() => setB(null)}>
       <form onSubmit={async (e) => { e.preventDefault(); if (!b.itens.length) return notify('Adicione ao menos um procedimento.'); await save({ ...b, criado_em: b.criado_em || new Date().toISOString() }); setB(null) }}>
         <div className="grid sm:grid-cols-2 gap-x-3"><Field label="Paciente"><select className="input" value={b.patient_id} onChange={(e) => setB({ ...b, patient_id: e.target.value })}>{pt.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}</select></Field>
@@ -28,8 +29,9 @@ export default function Orcamentos() {
           <Field label="Parcelas"><input className="input" type="number" min="1" max="24" value={b.parcelas} onChange={(e) => setB({ ...b, parcelas: Number(e.target.value) || 1 })} /></Field>
           <Field label="Status"><select className="input" value={b.status} onChange={(e) => setB({ ...b, status: e.target.value })}>{Object.entries(ST).map(([k, [l]]) => <option key={k} value={k}>{l}</option>)}</select></Field></div>
         <div className="flex items-center justify-between bg-ink text-white rounded-xl px-4 py-3 mb-3"><span>Total</span><b className="text-xl">{brl(totalOrc(b))}</b></div>
+        {b.id && <p className="text-sm mb-3"><b className="text-emerald-700">Pago {brl(pago(b.id))}</b> · <b>Saldo {brl(Math.max(0, totalOrc(b) - pago(b.id)))}</b> <span className="text-slate-500">(registre no Caixa vinculando este orçamento)</span></p>}
         {b.parcelas > 1 && <p className="text-sm text-slate-500 mb-3">{b.parcelas}x de {brl(totalOrc(b) / b.parcelas)} (sem juros)</p>}
-        <div className="flex justify-between">{b.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (await ask('Excluir orçamento?')) { await remove(b.id); setB(null) } }}>Excluir</button> : <span />}<button className="btn btn-primary">Salvar</button></div>
+        <div className="flex justify-between">{b.id ? <button type="button" className="btn btn-danger" onClick={async () => { if (await ask('Excluir orçamento?')) { await remove(b.id); setB(null) } }}>Excluir</button> : <span />}<span className="flex gap-2">{b.id && pt.find((p) => p.id === b.patient_id)?.whatsapp && <a className="btn btn-ghost" target="_blank" rel="noreferrer" href={waLink(pt.find((p) => p.id === b.patient_id).whatsapp, `Olá! Segue seu orçamento:\n${b.itens.map((i) => `• ${i.nome}${i.dente ? ' (dente ' + i.dente + ')' : ''} x${i.qtd}: ${brl(i.qtd * i.valor)}`).join('\n')}\n${b.desconto ? 'Desconto: ' + brl(b.desconto) + '\n' : ''}Total: ${brl(totalOrc(b))}${b.parcelas > 1 ? ' em ' + b.parcelas + 'x de ' + brl(totalOrc(b) / b.parcelas) : ''}`)}>Enviar no WhatsApp</a>}<button className="btn btn-primary">Salvar</button></span></div>
       </form></Modal>}
   </>)
 }

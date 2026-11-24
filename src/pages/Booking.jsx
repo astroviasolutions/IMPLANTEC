@@ -3,30 +3,32 @@ import { Link } from 'react-router-dom'
 import { Check, ChevronLeft, MessageCircle } from 'lucide-react'
 import Logo from '../components/Logo'
 import { DEMO, db, supabase, useTable } from '../lib/db'
-import { brl, digits, hm, mkDate, pad, ymd, waLink } from '../lib/util'
+import { brl, digits, hm, mkDate, pad, ymd } from '../lib/util'
+import { useClinica, toMin } from '../lib/settings'
 
-const ABRE = 8, FECHA = 18, PASSO = 30
 async function ocupados(dentistId, dia) {
   if (DEMO) { const a = await db.list('appointments'); return a.filter((x) => x.dentist_id === dentistId && !['cancelado', 'faltou'].includes(x.status) && ymd(new Date(x.inicio)) === dia).map((x) => [new Date(x.inicio), new Date(x.fim)]) }
   const { data } = await supabase.rpc('horarios_ocupados', { p_dentist: dentistId, p_dia: dia }); return (data || []).map((x) => [new Date(x.inicio), new Date(x.fim)])
 }
 export default function Booking() {
-  const { rows: services } = useTable('services'), { rows: dentists } = useTable('dentists'), { rows: notices } = useTable('notices')
+  const { cfg } = useClinica(), { rows: services } = useTable('services'), { rows: dentists } = useTable('dentists'), { rows: notices } = useTable('notices')
   const [step, setStep] = useState(0), [svc, setSvc] = useState(null), [dent, setDent] = useState(null), [dia, setDia] = useState(''), [hora, setHora] = useState('')
   const [busy, setBusy] = useState([]), [nome, setNome] = useState(''), [tel, setTel] = useState(''), [done, setDone] = useState(false), [err, setErr] = useState(''), [sending, setSending] = useState(false)
-  const dias = useMemo(() => Array.from({ length: 21 }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return d }).filter((d) => d.getDay() !== 0), [])
+  const dias = useMemo(() => Array.from({ length: cfg.janela_dias }, (_, i) => { const d = new Date(); d.setDate(d.getDate() + i); return d }).filter((d) => cfg.dias.includes(d.getDay()) && !cfg.bloqueios.some((b) => b.data === ymd(d))), [cfg.janela_dias, cfg.dias, cfg.bloqueios])
   useEffect(() => { if (dent && dia) ocupados(dent.id, dia).then(setBusy) }, [dent, dia])
   const slots = useMemo(() => {
     if (!svc || !dia) return []
     const out = [], now = new Date()
-    for (let m = ABRE * 60; m + svc.duracao_min <= FECHA * 60; m += PASSO) {
+    const lim = new Date(now.getTime() + cfg.antecedencia_h * 3600000), a1 = toMin(cfg.almoco_ini), a2 = toMin(cfg.almoco_fim)
+    for (let m = toMin(cfg.abre); m + svc.duracao_min <= toMin(cfg.fecha); m += cfg.intervalo) {
+      if (a2 > a1 && m < a2 && m + svc.duracao_min > a1) continue
       const ini = mkDate(dia, `${pad(Math.floor(m / 60))}:${pad(m % 60)}`), fim = new Date(ini.getTime() + svc.duracao_min * 60000)
-      if (ini < now) continue
+      if (ini < lim) continue
       if (busy.some(([a, b]) => ini < b && fim > a)) continue
       out.push(hm(ini))
     }
     return out
-  }, [svc, dia, busy])
+  }, [svc, dia, busy, cfg])
   const ativos = dentists.filter((d) => d.ativo !== false), sv = services.filter((s) => s.ativo !== false)
   const confirmar = async (e) => {
     e.preventDefault(); setErr('')
@@ -47,7 +49,7 @@ export default function Booking() {
         <div className="absolute inset-0 opacity-30" style={{ background: 'radial-gradient(900px 300px at 80% -20%, #1b6aa5, transparent), radial-gradient(500px 240px at 0% 120%, #c4a46855, transparent)' }} />
         <div className="relative max-w-2xl mx-auto px-5 pt-8 pb-10">
           <div className="flex items-center justify-between"><Logo variant="light" size="md" tagline /><Link to="/login" className="text-sm font-semibold border border-white/30 rounded-lg px-3 py-1.5 text-white/90 hover:bg-white/10">Área da clínica</Link></div>
-          <p className="font-serif text-2xl mt-8 max-w-sm leading-snug">Agende sua consulta em menos de um minuto.</p>
+          <p className="font-serif text-2xl mt-8 max-w-sm leading-snug">Agende sua consulta em menos de um minuto.</p>{cfg.endereco && <p className="text-sm text-white/70 mt-2">{cfg.endereco}</p>}
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-4 -mt-6 pb-16 relative">
@@ -66,11 +68,12 @@ export default function Booking() {
               <h2 className="font-bold text-lg flex-1">{titles[step]}</h2><span className="text-xs text-slate-400">{step + 1}/5</span>
             </div>
             <div className="h-1 bg-slate-100 rounded mb-5"><div className="h-1 bg-brand rounded transition-all" style={{ width: `${(step + 1) * 20}%` }} /></div>
-            {step === 0 && <div className="grid gap-2">{sv.map((s) => <button key={s.id} onClick={() => { setSvc(s); setStep(1) }} className="text-left p-3.5 rounded-xl border border-line hover:border-brand hover:bg-brand/5 flex justify-between gap-3"><span><b className="block">{s.nome}</b><span className="text-xs text-slate-500">{s.categoria} · {s.duracao_min} min</span></span><span className="font-bold text-ink whitespace-nowrap">{s.preco > 0 ? brl(s.preco) : 'Sem custo'}</span></button>)}</div>}
-            {step === 1 && <div className="grid gap-2">{ativos.map((d) => <button key={d.id} onClick={() => { setDent(d); setStep(2) }} className="text-left p-3.5 rounded-xl border border-line hover:border-brand hover:bg-brand/5 flex items-center gap-3"><span className="w-10 h-10 rounded-full grid place-items-center text-white font-bold" style={{ background: d.cor }}>{d.nome.replace(/^(Dr\.|Dra\.)\s*/, '')[0]}</span><span><b className="block">{d.nome}</b><span className="text-xs text-slate-500">{d.especialidade}</span></span></button>)}</div>}
-            {step === 2 && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">{dias.map((d) => <button key={ymd(d)} onClick={() => { setDia(ymd(d)); setHora(''); setStep(3) }} className="p-2.5 rounded-xl border border-line hover:border-brand hover:bg-brand/5 text-center"><div className="text-[11px] uppercase text-slate-500">{d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div><div className="text-xl font-extrabold">{d.getDate()}</div><div className="text-[11px] text-slate-500">{d.toLocaleDateString('pt-BR', { month: 'short' })}</div></button>)}</div>}
-            {step === 3 && (<>{err && <p role="alert" className="text-sm text-rose-700 mb-3">{err}</p>}{slots.length ? <div className="grid grid-cols-4 gap-2">{slots.map((h) => <button key={h} onClick={() => { setHora(h); setStep(4) }} className="py-2.5 rounded-xl border border-line font-semibold hover:border-brand hover:bg-brand/5">{h}</button>)}</div> : <p className="text-sm text-slate-500 py-6 text-center">Sem horários nesse dia. Escolha outra data.</p>}</>)}
-            {step === 4 && <form onSubmit={confirmar}>
+            {!cfg.online_ativo && <p className="text-sm bg-amber-50 text-amber-900 rounded-xl p-3">O agendamento online está pausado. {cfg.whatsapp ? `Chame a clínica no WhatsApp ${cfg.whatsapp}.` : 'Entre em contato com a clínica.'}</p>}
+            {cfg.online_ativo && step === 0 && <div className="grid gap-2">{sv.map((s) => <button key={s.id} onClick={() => { setSvc(s); setStep(1) }} className="text-left p-3.5 rounded-xl border border-line hover:border-brand hover:bg-brand/5 flex justify-between gap-3"><span><b className="block">{s.nome}</b><span className="text-xs text-slate-500">{s.categoria} · {s.duracao_min} min</span></span><span className="font-bold text-ink whitespace-nowrap">{s.preco > 0 ? brl(s.preco) : 'Sem custo'}</span></button>)}</div>}
+            {cfg.online_ativo && step === 1 && <div className="grid gap-2">{ativos.map((d) => <button key={d.id} onClick={() => { setDent(d); setStep(2) }} className="text-left p-3.5 rounded-xl border border-line hover:border-brand hover:bg-brand/5 flex items-center gap-3"><span className="w-10 h-10 rounded-full grid place-items-center text-white font-bold" style={{ background: d.cor }}>{d.nome.replace(/^(Dr\.|Dra\.)\s*/, '')[0]}</span><span><b className="block">{d.nome}</b><span className="text-xs text-slate-500">{d.especialidade}</span></span></button>)}</div>}
+            {cfg.online_ativo && step === 2 && <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">{dias.map((d) => <button key={ymd(d)} onClick={() => { setDia(ymd(d)); setHora(''); setStep(3) }} className="p-2.5 rounded-xl border border-line hover:border-brand hover:bg-brand/5 text-center"><div className="text-[11px] uppercase text-slate-500">{d.toLocaleDateString('pt-BR', { weekday: 'short' })}</div><div className="text-xl font-extrabold">{d.getDate()}</div><div className="text-[11px] text-slate-500">{d.toLocaleDateString('pt-BR', { month: 'short' })}</div></button>)}</div>}
+            {cfg.online_ativo && step === 3 && (<>{err && <p role="alert" className="text-sm text-rose-700 mb-3">{err}</p>}{slots.length ? <div className="grid grid-cols-4 gap-2">{slots.map((h) => <button key={h} onClick={() => { setHora(h); setStep(4) }} className="py-2.5 rounded-xl border border-line font-semibold hover:border-brand hover:bg-brand/5">{h}</button>)}</div> : <p className="text-sm text-slate-500 py-6 text-center">Sem horários nesse dia. Escolha outra data.</p>}</>)}
+            {cfg.online_ativo && step === 4 && <form onSubmit={confirmar}>
               <div className="bg-slate-50 rounded-xl p-3 text-sm mb-4"><b>{svc.nome}</b> · {dent.nome}<br />{new Date(dia + 'T12:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })} às {hora}</div>
               <label className="label" htmlFor="n">Nome completo</label><input id="n" className="input mb-3" required value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" />
               <label className="label" htmlFor="t">WhatsApp (com DDD)</label><input id="t" className="input mb-4" required inputMode="tel" placeholder="(41) 90000-0000" value={tel} onChange={(e) => setTel(e.target.value)} autoComplete="tel" />

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Search, PenLine } from 'lucide-react'
 import { useTable, db, DEMO, supabase } from '../lib/db'
 import { Modal, Field, PageHead, Empty } from '../components/ui'
-import { digits, waLink } from '../lib/util'
+import { digits, waLink, brl, STATUS } from '../lib/util'
 
 const SN = ['', 'Sim', 'Não']
 const PERGUNTAS = [
@@ -57,7 +57,8 @@ const TERMOS = {
 }
 
 export default function Pacientes() {
-  const { rows, save, remove } = useTable('patients'), { rows: terms } = useTable('signed_terms')
+  const { rows, save, remove } = useTable('patients'), { rows: terms } = useTable('signed_terms'), { rows: aps } = useTable('appointments'), { rows: pays } = useTable('payments'), { rows: svs } = useTable('services'), { rows: bds } = useTable('budgets')
+  const [evo, setEvo] = useState('')
   const [q, setQ] = useState(''), [p, setP] = useState(null), [tab, setTab] = useState('dados'), [termo, setTermo] = useState(Object.keys(TERMOS)[0])
   const lista = rows.filter((x) => (x.nome + digits(x.whatsapp) + (x.cpf || '')).toLowerCase().includes(q.toLowerCase().trim())).sort((a, b) => a.nome.localeCompare(b.nome))
   const novo = () => { setP({ nome: '', whatsapp: '', cpf: '', nascimento: '', email: '', anamnese: {}, odontograma: {}, observacoes: '' }); setTab('dados') }
@@ -71,7 +72,7 @@ export default function Pacientes() {
     {lista.length === 0 ? <div className="card"><Empty>{rows.length ? 'Nenhum resultado.' : 'Nenhum paciente ainda. Toque em "Novo paciente".'}</Empty></div> :
       <div className="card divide-y divide-line">{lista.map((x) => <button key={x.id} onClick={() => { setP(x); setTab('dados') }} className="w-full text-left px-4 py-3 hover:bg-slate-50 flex justify-between gap-3"><b>{x.nome}</b><span className="text-sm text-slate-500">{x.whatsapp}</span></button>)}</div>}
     {p && <Modal wide title={p.id ? p.nome : 'Novo paciente'} onClose={() => setP(null)}>
-      <div className="flex gap-1 mb-4 overflow-x-auto">{[['dados', 'Dados'], ['anamnese', 'Anamnese'], ['odonto', 'Odontograma'], ['termos', 'Termos']].map(([k, l]) => <button key={k} onClick={() => setTab(k)} disabled={k !== 'dados' && !p.id} className={`btn !py-1.5 ${tab === k ? 'btn-primary' : 'btn-ghost'}`}>{l}</button>)}</div>
+      <div className="flex gap-1 mb-4 overflow-x-auto">{[['dados', 'Dados'], ['anamnese', 'Anamnese'], ['odonto', 'Odontograma'], ['hist', 'Histórico'], ['termos', 'Termos']].map(([k, l]) => <button key={k} onClick={() => setTab(k)} disabled={k !== 'dados' && !p.id} className={`btn !py-1.5 ${tab === k ? 'btn-primary' : 'btn-ghost'}`}>{l}</button>)}</div>
       {tab === 'dados' && <form onSubmit={gravar}>
         <div className="grid sm:grid-cols-2 gap-x-3">
           <Field label="Nome completo"><input className="input" required value={p.nome} onChange={set('nome')} /></Field>
@@ -90,6 +91,16 @@ export default function Pacientes() {
         <Field label="Outras condições de saúde"><textarea rows={2} className="input" value={p.anamnese?.outras || ''} onChange={an('outras')} /></Field>
         <button className="btn btn-primary w-full">Salvar anamnese</button></form>}
       {tab === 'odonto' && <><Odonto value={p.odontograma || {}} onChange={(o) => setP({ ...p, odontograma: o })} /><button className="btn btn-primary w-full mt-4" onClick={() => gravar()}>Salvar odontograma</button></>}
+      {tab === 'hist' && (() => {
+        const mine = aps.filter((a) => a.patient_id === p.id).sort((a, b) => b.inicio.localeCompare(a.inicio)), pg = pays.filter((x) => x.patient_id === p.id), pago = pg.reduce((s, x) => s + Number(x.valor), 0)
+        const orc = bds.filter((b) => b.patient_id === p.id && b.status !== 'recusado').reduce((s, b) => s + b.itens.reduce((t, i) => t + i.qtd * i.valor, 0) - (b.desconto || 0), 0)
+        const addEvo = async () => { if (!evo.trim()) return; const r = await save({ ...p, evolucoes: [{ id: crypto.randomUUID?.() || String(Date.now()), data: new Date().toISOString(), texto: evo.trim() }, ...(p.evolucoes || [])] }); setP(r); setEvo('') }
+        return (<div>
+          <div className="grid grid-cols-3 gap-2 mb-4 text-center"><div className="card p-2.5"><div className="label">Consultas</div><b>{mine.length}</b></div><div className="card p-2.5"><div className="label">Já pago</div><b>{brl(pago)}</b></div><div className="card p-2.5"><div className="label">Em orçamentos</div><b>{brl(orc)}</b></div></div>
+          <div className="label">Nova evolução clínica</div><textarea rows={3} className="input mb-2" value={evo} onChange={(e) => setEvo(e.target.value)} placeholder="Procedimento realizado, achados, orientações, próximos passos…" /><button className="btn btn-primary mb-5" disabled={!evo.trim()} onClick={addEvo}>Registrar evolução</button>
+          {(p.evolucoes || []).map((e) => <div key={e.id} className="border-l-2 border-gold pl-3 mb-3"><div className="text-xs text-slate-500">{new Date(e.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div><p className="text-sm whitespace-pre-wrap">{e.texto}</p></div>)}
+          <div className="label mt-4">Consultas</div><ul className="text-sm divide-y divide-line">{mine.map((a) => <li key={a.id} className="py-2 flex justify-between gap-2"><span>{new Date(a.inicio).toLocaleDateString('pt-BR')} · {svs.find((s) => s.id === a.service_id)?.nome}</span><span className="text-slate-500">{STATUS[a.status][0]}</span></li>)}{!mine.length && <li className="py-2 text-slate-500">Nenhuma consulta.</li>}</ul>
+        </div>) })()}
       {tab === 'termos' && <div>
         <Field label="Tipo de termo"><select className="input" value={termo} onChange={(e) => setTermo(e.target.value)}>{Object.keys(TERMOS).map((k) => <option key={k}>{k}</option>)}</select></Field>
         <div className="bg-slate-50 rounded-xl p-3 text-sm mb-3"><b>{p.nome}</b>, {TERMOS[termo]}</div>

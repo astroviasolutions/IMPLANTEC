@@ -7,7 +7,7 @@ const url = import.meta.env.VITE_SUPABASE_URL, key = import.meta.env.VITE_SUPABA
 export const DEMO = !(url && key)
 export const supabase = DEMO ? null : createClient(url, key)
 
-const LS = 'implantec_demo_v1'
+const LS = 'implantec_demo_v2'
 let mem = null // fallback quando o navegador bloqueia localStorage
 const load = () => { if (mem) return mem; try { const j = JSON.parse(localStorage.getItem(LS)); if (j) return j } catch {} mem = seed(); try { localStorage.setItem(LS, JSON.stringify(mem)) } catch {} return mem }
 const persist = (s) => { mem = s; try { localStorage.setItem(LS, JSON.stringify(s)) } catch {} }

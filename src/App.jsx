@@ -13,6 +13,11 @@ const Financeiro = lazy(() => import('./pages/Financeiro'))
 const Comissoes = lazy(() => import('./pages/Comissoes'))
 const Avisos = lazy(() => import('./pages/Avisos'))
 const Config = lazy(() => import('./pages/Config'))
+const Relatorios = lazy(() => import('./pages/Relatorios'))
+const Retornos = lazy(() => import('./pages/Retornos'))
+const Estoque = lazy(() => import('./pages/Estoque'))
+const Planos = lazy(() => import('./pages/Planos'))
+const TV = lazy(() => import('./pages/TV'))
 
 function Private({ children }) {
   const { user } = useAuth()
@@ -25,6 +30,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Booking />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/tv" element={<Private><TV /></Private>} />
         <Route path="/app" element={<Private><Layout /></Private>}>
           <Route index element={<Dashboard />} />
           <Route path="agenda" element={<Agenda />} />
@@ -33,6 +39,10 @@ export default function App() {
           <Route path="caixa" element={<Caixa />} />
           <Route path="financeiro" element={<Financeiro />} />
           <Route path="comissoes" element={<Comissoes />} />
+          <Route path="relatorios" element={<Relatorios />} />
+          <Route path="retornos" element={<Retornos />} />
+          <Route path="estoque" element={<Estoque />} />
+          <Route path="planos" element={<Planos />} />
           <Route path="avisos" element={<Avisos />} />
           <Route path="config" element={<Config />} />
         </Route>

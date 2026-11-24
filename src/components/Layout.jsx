@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, CalendarDays, Users, FileText, Wallet, TrendingUp, Percent, Megaphone, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, Users, FileText, Wallet, TrendingUp, Percent, Megaphone, Settings, LogOut, BarChart3, HeartHandshake, Boxes, Repeat } from 'lucide-react'
 import Logo from './Logo'
 import { useAuth, DEMO } from '../lib/db'
 const items = [
   ['/app', 'Painel', LayoutDashboard, true], ['/app/agenda', 'Agenda', CalendarDays], ['/app/pacientes', 'Pacientes', Users],
   ['/app/orcamentos', 'Orçamentos', FileText], ['/app/caixa', 'Caixa', Wallet], ['/app/financeiro', 'Financeiro', TrendingUp],
-  ['/app/comissoes', 'Comissões', Percent], ['/app/avisos', 'Avisos', Megaphone], ['/app/config', 'Config', Settings],
+  ['/app/relatorios', 'Relatórios', BarChart3], ['/app/comissoes', 'Comissões', Percent], ['/app/retornos', 'Retornos', HeartHandshake], ['/app/estoque', 'Estoque', Boxes],
+  ['/app/planos', 'Planos', Repeat], ['/app/avisos', 'Avisos', Megaphone], ['/app/config', 'Config', Settings],
 ]
 export default function Layout() {
   const { logout } = useAuth(), nav = useNavigate()
@@ -14,7 +15,7 @@ export default function Layout() {
     <div className="min-h-dvh md:flex">
       <aside className="hidden md:flex md:w-60 shrink-0 flex-col bg-ink p-4 sticky top-0 h-dvh">
         <div className="px-1 py-3 mb-4"><Logo variant="light" size="sm" /></div>
-        <nav className="flex flex-col gap-1 flex-1">{items.map(([to, l, I, end]) => <NavLink key={to} to={to} end={end} className={link}><I size={18} />{l}</NavLink>)}</nav>
+        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">{items.map(([to, l, I, end]) => <NavLink key={to} to={to} end={end} className={link}><I size={18} />{l}</NavLink>)}</nav>
         <button onClick={async () => { await logout(); nav('/login') }} className="flex items-center gap-3 px-3 py-2.5 text-sm text-white/60 hover:text-white"><LogOut size={18} />Sair</button>
       </aside>
       <main className="flex-1 min-w-0 pb-24 md:pb-8">

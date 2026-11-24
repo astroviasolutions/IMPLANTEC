@@ -17,7 +17,7 @@ export const seed = () => {
     svc('Canal (endodontia)', 'Endodontia', 90, 800), svc('Urgência / dor', 'Clínica', 30, 150),
   ],
   patients: [], appointments: [], budgets: [], payments: [], expenses: [], notices: [], signed_terms: [],
-  settings: [{ chave: 'clinica', valor: { nome: 'Implantec Odontologia', whatsapp: '', abre: '08:00', fecha: '18:00', intervalo: 30, dias: [1, 2, 3, 4, 5, 6] } }],
+  settings: [], stock_items: [], plans: [], subscriptions: [],
 }
   // Pacientes e movimentação FICTÍCIOS, só para demonstrar o app.
   const [i, o, c] = S.dentists, sv = (n) => S.services.find((x) => x.nome.startsWith(n))
@@ -41,6 +41,16 @@ export const seed = () => {
     { id: uid(), patient_id: m.id, dentist_id: c.id, valor: 200, forma: 'dinheiro', data: at(-5, 11).toISOString(), obs: 'Limpeza' },
   ]
   S.expenses = [{ id: uid(), descricao: 'Aluguel', categoria: 'Fixa', valor: 3200, data: at(0, 9).toISOString().slice(0, 10) }, { id: uid(), descricao: 'Laboratório de prótese', categoria: 'Laboratório', valor: 650, data: at(-1, 9).toISOString().slice(0, 10) }]
+  const hoje = new Date(), mm = String(hoje.getMonth() + 1).padStart(2, '0'), dd = String(Math.min(28, hoje.getDate() + 2)).padStart(2, '0')
+  f.nascimento = `1992-${mm}-${dd}`
+  const ant = P('Paulo Antigo', '(41) 99999-0005', '1980-06-10', { queixa: 'Revisão', diabetes: 'Não' }, { 17: 'restaurado' }); S.patients.push(ant)
+  S.appointments.push(ap(ant, c, sv('Limpeza'), -240, 10, 0, 'concluido'), ap(m, i, sv('Avaliação'), -20, 9, 0, 'concluido'), ap(k, i, sv('Canal'), -12, 10, 0, 'concluido'), ap(f, o, sv('Manutenção'), -9, 14, 0, 'faltou'), ap(k, c, sv('Restauração'), -30, 11, 0, 'concluido'), ap(f, c, sv('Clareamento'), -45, 9, 0, 'concluido'))
+  const pg = (p, d, valor, forma, dias, obs) => ({ id: uid(), patient_id: p.id, dentist_id: d.id, valor, forma, data: at(dias, 10).toISOString(), obs })
+  S.payments.push(pg(m, i, 3200, 'credito', -3, 'Implante 1ª fase'), pg(k, i, 1500, 'pix', -62, 'Tratamento'), pg(f, o, 900, 'debito', -95, 'Ortodontia'), pg(m, c, 600, 'pix', -125, 'Restaurações'), pg(k, c, 2100, 'credito', -155, 'Prótese'), pg(ant, c, 200, 'dinheiro', -240, 'Limpeza'))
+  m.evolucoes = [{ id: uid(), data: at(-20, 9).toISOString(), texto: 'Avaliação inicial. Rx panorâmica solicitada. Planejado implante na região do 36 após tomografia.' }]
+  S.stock_items = [{ id: uid(), nome: 'Anestésico (tubete)', unidade: 'cx', qtd: 3, minimo: 5 }, { id: uid(), nome: 'Luvas de procedimento M', unidade: 'cx', qtd: 12, minimo: 6 }, { id: uid(), nome: 'Fio de sutura', unidade: 'un', qtd: 20, minimo: 10 }, { id: uid(), nome: 'Resina composta A2', unidade: 'un', qtd: 2, minimo: 2 }]
+  const pl = { id: uid(), nome: 'Manutenção ortodôntica mensal', valor: 180, descricao: 'Consulta mensal de manutenção do aparelho' }; S.plans = [pl]
+  S.subscriptions = [{ id: uid(), patient_id: f.id, plan_id: pl.id, inicio: at(-60, 9).toISOString().slice(0, 10), status: 'ativo', pagos: [] }]
   S.notices = [{ id: uid(), titulo: 'Atendimento com hora marcada', texto: 'Urgências: chame a clínica pelo WhatsApp.', ativo: true }]
   return S
 }
